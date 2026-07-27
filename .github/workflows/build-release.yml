@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      RELEASE_MODE: ${{ github.event_name == 'schedule' && 'publish' || github.event_name == 'workflow_dispatch' && inputs.release_mode || 'validate' }}
+      RELEASE_MODE: ${{ github.event_name == 'schedule' && 'draft' || github.event_name == 'workflow_dispatch' && inputs.release_mode || 'validate' }}
 
     steps:
       - name: Check out builder
