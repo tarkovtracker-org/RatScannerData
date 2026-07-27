@@ -1,6 +1,13 @@
 name: Build data bundle
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/build-release.yml"
+      - "requirements*.txt"
+      - "scripts/**"
   workflow_dispatch:
     inputs:
       release_mode:
@@ -27,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      RELEASE_MODE: ${{ github.event_name == 'schedule' && 'publish' || inputs.release_mode }}
+      RELEASE_MODE: ${{ github.event_name == 'schedule' && 'publish' || github.event_name == 'workflow_dispatch' && inputs.release_mode || 'validate' }}
 
     steps:
       - name: Check out builder
