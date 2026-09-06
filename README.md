@@ -55,7 +55,7 @@ The `Build data bundle` workflow supports:
 - `validate`: build and retain a workflow artifact without creating a release;
 - `draft`: create a draft GitHub release for maintainer verification;
 - `publish`: create the published `latest` release;
-- a monthly schedule that publishes only when validated content changes.
+- a weekly schedule that publishes only when validated content changes.
 
 The workflow also supports manual runs after major Escape from Tarkov patches.
 Every build downloads from upstream once on the GitHub runner, allowing
