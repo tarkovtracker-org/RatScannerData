@@ -34,6 +34,10 @@ TESSDATA_LICENSE_URL = (
     f"https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/{TESSDATA_REF}/LICENSE"
 )
 UNKNOWN_IMAGE_URL = "https://assets.tarkov.dev/unknown-item-base-image.webp"
+# Every download, including URLs read from the catalog or passed via CLI, must target one of these.
+ALLOWED_SOURCE_HOSTS = frozenset(
+    {"json.tarkov.dev", "assets.tarkov.dev", "raw.githubusercontent.com"}
+)
 USER_AGENT = "RatScannerDataBuilder/1.0 (+https://github.com/TarkovTracker-org/RatScannerData)"
 SAFE_ITEM_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 REQUIRED_ARCHIVE_FILES = (
@@ -70,6 +74,12 @@ def sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
+def require_allowed_source(url: str) -> None:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_SOURCE_HOSTS:
+        raise ValueError(f"Only HTTPS sources on allowed hosts are permitted: {url}")
+
+
 def fetch_bytes(
     url: str,
     *,
@@ -79,9 +89,7 @@ def fetch_bytes(
 ) -> bytes:
     """Download a URL with bounded retry/backoff for transient failures."""
 
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https":
-        raise ValueError(f"Only HTTPS sources are allowed: {url}")
+    require_allowed_source(url)
 
     request = urllib.request.Request(
         url,
@@ -90,6 +98,7 @@ def fetch_bytes(
     for attempt in range(1, attempts + 1):
         try:
             with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                require_allowed_source(response.geturl())
                 return response.read()
         except urllib.error.HTTPError as error:
             retryable = error.code == 429 or 500 <= error.code < 600
