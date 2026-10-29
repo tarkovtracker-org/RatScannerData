@@ -21,9 +21,14 @@ from scripts import build_data, validate_archive
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def image_bytes(mode: str, color: tuple[int, ...], image_format: str = "PNG") -> bytes:
+def image_bytes(
+    mode: str,
+    color: tuple[int, ...],
+    image_format: str = "PNG",
+    size: tuple[int, int] = (64, 64),
+) -> bytes:
     output = io.BytesIO()
-    Image.new(mode, (64, 64), color).save(output, format=image_format, lossless=True)
+    Image.new(mode, size, color).save(output, format=image_format, lossless=True)
     return output.getvalue()
 
 
@@ -39,6 +44,7 @@ class DecoderTests(unittest.TestCase):
         self.assertIn("-r requirements.txt", (ROOT / "requirements-dev.txt").read_text())
 
     def test_png_and_webp_preserve_pixels_dimensions_and_transparency(self) -> None:
+        """Exercise both decoders without changing the rendered RGBA pixels."""
         for image_format in ("PNG", "WEBP"):
             with self.subTest(image_format=image_format):
                 png, width, height, transparent = build_data.png_from_image(
@@ -61,18 +67,19 @@ class DecoderTests(unittest.TestCase):
             build_data.png_from_image(b"not an image", "fixture")
 
     def test_offline_bundle_remains_deterministic_and_independently_valid(self) -> None:
+        """Validate asymmetric slot geometry and timestamp-independent ZIP metadata."""
         icon_url = "https://assets.tarkov.dev/test-item.webp"
         catalog = {
             "data": {
                 "items": [
-                    {"id": "test-item", "baseImageLink": icon_url, "width": 1, "height": 1},
+                    {"id": "test-item", "baseImageLink": icon_url, "width": 2, "height": 3},
                     {"id": "placeholder", "baseImageLink": build_data.UNKNOWN_IMAGE_URL},
                 ]
             }
         }
         sources = {
             build_data.CATALOG_URL: json.dumps(catalog).encode(),
-            icon_url: image_bytes("RGBA", (10, 20, 30, 128), "WEBP"),
+            icon_url: image_bytes("RGBA", (10, 20, 30, 128), "WEBP", size=(127, 190)),
             build_data.UNKNOWN_IMAGE_URL: image_bytes("RGBA", (0, 0, 0, 0)),
             build_data.MAPS_URL: json.dumps([{"normalizedName": "customs", "maps": []}]).encode(),
             f"{build_data.TESSDATA_BASE_URL}/eng.traineddata": b"x" * 100_000,
@@ -100,8 +107,14 @@ class DecoderTests(unittest.TestCase):
                 icon = next(
                     entry for entry in manifest["files"] if entry["path"].startswith("icons/")
                 )
-                self.assertEqual(icon["renderedSlots"], {"width": 1, "height": 1})
+                self.assertEqual((icon["width"], icon["height"]), (127, 190))
+                self.assertEqual(icon["renderedSlots"], {"width": 2, "height": 3})
+                self.assertEqual(icon["declaredSlots"], {"width": 2, "height": 3})
                 self.assertTrue(icon["slotDimensionsMatch"])
+                with Image.open(io.BytesIO(bundle.read(icon["path"]))) as rendered:
+                    self.assertEqual(rendered.size, (127, 190))
+                for entry in bundle.infolist():
+                    self.assertEqual(entry.date_time, (1980, 1, 1, 0, 0, 0))
             self.assertEqual(build_data.build(arguments).read_bytes(), first)
 
 

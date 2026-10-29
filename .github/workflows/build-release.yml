@@ -6,11 +6,13 @@ on:
       - master
     paths:
       - ".github/workflows/build-release.yml"
+      - "THIRD_PARTY_NOTICES.md"
       - "requirements*.txt"
       - "scripts/**"
   pull_request:
     paths:
       - ".github/workflows/build-release.yml"
+      - "THIRD_PARTY_NOTICES.md"
       - "pyproject.toml"
       - "requirements*.txt"
       - "scripts/**"
