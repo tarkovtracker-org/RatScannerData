@@ -35,13 +35,14 @@ details.
 
 ## Build locally
 
-Requires Python 3.10 or later.
+Requires Python 3.11 or later (Pillow 13 no longer supports Python 3.10).
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
 .\.venv\Scripts\ruff check scripts
 .\.venv\Scripts\ruff format --check scripts
+.\.venv\Scripts\python -m unittest discover -s scripts -p 'test_*.py' -q
 .\.venv\Scripts\python scripts\build_data.py
 .\.venv\Scripts\python scripts\validate_archive.py build\release\Data.zip
 ```
@@ -49,6 +50,11 @@ python -m venv .venv
 Outputs are written under `build/` and remain untracked.
 
 ## Release automation
+
+Pull requests run hash-locked dependency installation, linting, and offline tests
+without downloading upstream data or creating releases. The tests check the
+patched Pillow pin, PNG/WebP conversion, transparency, slot geometry, and a
+deterministic bundle validated independently.
 
 The `Build data bundle` workflow supports:
 
